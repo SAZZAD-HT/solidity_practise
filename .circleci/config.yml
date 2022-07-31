@@ -1,0 +1,91 @@
+version: 2
+aliases:
+
+  #- &node_installation
+  #  run:
+  #    name: "Update Node.js and npm if on MacOS"
+  #    command: .circleci/install_node.sh
+
+  - &upgrade_yarn
+    run:
+      name: "Updates yarn"
+      command: .circleci/upgrade_yarn.sh
+
+  # Custom task removes unnecessary build files before uploading release directory
+  - &before_store_artifacts
+    run:
+      name: Preparing for artifact upload
+      command: rm -rf release/*-unpacked release/mac
+
+  - &upload_artifacts
+    store_artifacts:
+      path: release/
+
+  #- &install
+  #  run: node --version && yarn install
+
+  - &install
+    run: node --version && yarn
+
+  - &test_e2e
+    run: yarn test:e2e -s
+
+  - &run_script
+    run: 
+      name: "Building app (deploy if on master)"
+      no_output_timeout: 30m
+      command: | 
+        if [[ "${CIRCLE_BRANCH}" == 'master' ]]; then
+          yarn release --$GRID_ENV;
+        else
+          yarn dist --$GRID_ENV;
+        fi;
+  - &run_steps
+    steps:
+      - checkout
+      - run: node -v
+      # - *restore_modules_cache
+      - *install
+      # libp2p uses by default ursa-optional, libp2p fails using the ursa-optional built files. 
+      # removing ursa-optional allows libp2p to fallback to "keypair": https://github.com/libp2p/js-libp2p-crypto/pull/128/files#diff-3544cb4008be1bc81ba3bc70fbb55745a3343712bf391c316b21c4548b194501R23
+      # remix-desktop issue: https://github.com/ethereum/remix-desktop/issues/40
+      - run: rm -rf node_modules/ursa-optional
+      # - *test_e2e
+      - *run_script
+      # - *save_modules_cache
+      - *before_store_artifacts
+      - *upload_artifacts
+
+jobs:
+  build:
+    docker:
+      - image: electronuserland/builder:14
+    environment:
+      GRID_ENV: linux
+    working_directory: ~/repo
+    <<: *run_steps
+
+  build-win:
+    docker:
+      - image: electronuserland/builder:wine
+    environment:
+      GRID_ENV: win
+    working_directory: ~/repo
+    <<: *run_steps
+
+  build-mac:
+    resource_class: xlarge
+    macos:
+      xcode: 13.1.0
+    environment:
+      GRID_ENV: mac
+    working_directory: ~/repo
+    <<: *run_steps
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build
+      - build-mac
+      - build-win
