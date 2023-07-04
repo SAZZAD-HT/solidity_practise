@@ -1,6 +1,6 @@
 [![Join the chat at https://gitter.im/ethereum/remix](https://badges.gitter.im/ethereum/remix.svg)](https://gitter.im/ethereum/remix?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-# Remix Desktop
+# Remix Desktop  
 **Remix Desktop** is an Electron version of Remix IDE.  It works on Linux, Windows, & Macs.
 
 Like the name says, it is a desktop app - so it you can seamlessly access files on your computer's filesystem.  
